@@ -46,11 +46,9 @@ outputs/*/
 
 # Data - ChromaDB vector databases
 data/vector_db/
-data/capability_store/capability_db/
 
-# Capability store has its own git repository
-data/capability_store/.git/
-data/capability_store/capabilities/
+# Capability store has its own git repository - ignore entire directory
+data/capability_store/
 
 # Logs
 *.log
