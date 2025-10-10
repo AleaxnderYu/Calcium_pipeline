@@ -1,0 +1,22 @@
+name: calcium_pipeline
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - numpy>=1.24.0
+  - scipy>=1.11.0
+  - scikit-image>=0.21.0
+  - matplotlib>=3.7.0
+  - pillow>=10.0.0
+  - pip:
+    - langgraph>=0.0.20
+    - langchain>=0.1.0
+    - langchain-openai>=0.0.5
+    - langchain-community>=0.0.10
+    - chromadb>=0.4.0
+    - openai>=1.0.0
+    - python-dotenv>=1.0.0
+    - pydantic>=2.0.0
+    - gitpython>=3.1.0

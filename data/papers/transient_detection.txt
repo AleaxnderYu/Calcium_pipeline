@@ -1,0 +1,36 @@
+=== Calcium Transient Detection Methods ===
+
+Bandpass Filtering:
+Apply temporal filtering to remove slow drift and high-frequency noise.
+Recommended: Butterworth bandpass filter 0.1-5 Hz for typical calcium indicators.
+Library: scipy.signal.butter, scipy.signal.filtfilt
+Implementation: Design filter with scipy.signal.butter(order=3, Wn=[0.1, 5.0], btype='band')
+Apply with filtfilt for zero-phase filtering.
+
+Peak Detection:
+Use scipy.signal.find_peaks to identify transient events.
+Parameters:
+- prominence: Set to 2× median absolute deviation of baseline
+- distance: Minimum 5 frames between peaks (prevents double-counting)
+- height: Above baseline + 3× standard deviation
+
+Event Characterization:
+For each detected transient, measure:
+- Amplitude: Peak height above baseline
+- Rise time: Time from 10% to 90% of peak
+- Decay time: Time from peak to 50% recovery
+
+Alternative: Derivative-based Detection
+Calculate first derivative of fluorescence trace.
+Transient onsets correspond to positive zero-crossings of derivative.
+Use np.diff() to compute derivative, then find where derivative crosses threshold.
+
+Template Matching:
+For stereotyped calcium transients, create a template waveform.
+Use scipy.signal.correlate to find matches in the time series.
+Peaks in correlation indicate likely transient events.
+
+Deconvolution Methods:
+Advanced approach using deconvolution to estimate spike times.
+Assumes calcium dynamics follow exponential decay after spike.
+Libraries: OASIS algorithm, or custom implementation with scipy.optimize

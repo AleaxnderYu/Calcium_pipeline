@@ -1,0 +1,34 @@
+=== Cell Segmentation in Calcium Imaging ===
+
+Watershed Segmentation:
+The watershed algorithm is commonly used for segmenting cells in calcium imaging data.
+Process: Apply distance transform to binary image, find local maxima as seeds, then use watershed.
+Library: skimage.segmentation.watershed
+Parameters: minimum_distance between seeds typically 5-10 pixels depending on cell size.
+
+Blob Detection:
+Alternative approach using Laplacian of Gaussian (LoG) blob detection.
+Library: skimage.feature.blob_log
+Parameters: min_sigma=1, max_sigma=10, threshold=0.1
+
+Region Properties:
+After segmentation, extract cell properties using regionprops.
+Library: skimage.measure.regionprops
+Metrics: area, mean_intensity, centroid, eccentricity
+
+Preprocessing for Segmentation:
+Before applying segmentation algorithms, it's recommended to:
+1. Apply Gaussian blur to reduce noise (sigma=1-2 pixels)
+2. Use Otsu's thresholding to create binary mask
+3. Remove small objects (< 20 pixels typically)
+Library: skimage.filters.gaussian, skimage.filters.threshold_otsu, skimage.morphology.remove_small_objects
+
+Cell Counting:
+After segmentation using watershed or blob detection, count the number of detected regions.
+Use skimage.measure.label to label connected components, then count unique labels.
+Alternatively, use len(skimage.measure.regionprops(labeled_image)) to count cells.
+
+Intensity-based Detection:
+For bright cells on dark background, use simple intensity thresholding.
+Method: threshold = mean + 2*std, then label regions above threshold.
+This works well for sparse labeling where cells don't touch.

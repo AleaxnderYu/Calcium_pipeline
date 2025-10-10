@@ -1,0 +1,25 @@
+# Core orchestration
+langgraph>=0.0.20
+langchain>=0.1.0
+langchain-openai>=0.0.5
+langchain-community>=0.0.10
+
+# Vector database
+chromadb>=0.4.0
+
+# LLM API
+openai>=1.0.0
+
+# Data processing
+numpy>=1.24.0
+scipy>=1.11.0
+scikit-image>=0.21.0
+matplotlib>=3.7.0
+Pillow>=10.0.0
+
+# Utilities
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Version control for capabilities
+gitpython>=3.1.0
