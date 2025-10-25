@@ -1,0 +1,22 @@
+# Base packages for calcium imaging analysis in Docker
+# Keep this minimal - only common dependencies
+
+# Core scientific stack
+numpy>=1.24.0
+scipy>=1.10.0
+pandas>=2.0.0
+
+# Image processing
+Pillow>=10.0.0
+scikit-image>=0.21.0
+opencv-python-headless>=4.8.0
+
+# Visualization
+matplotlib>=3.7.0
+seaborn>=0.12.0
+
+# Optional: Basic machine learning
+scikit-learn>=1.3.0
+
+# Utilities
+tqdm>=4.65.0

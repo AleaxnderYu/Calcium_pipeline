@@ -12,8 +12,9 @@ from datetime import datetime
 
 # Import configuration and logging setup
 import config
-from utils.logging_config import setup_logging
+from core.logging_config import setup_logging
 from graph.workflow import run_workflow
+from core.session_manager import get_session_manager
 
 
 def main():
@@ -65,6 +66,32 @@ Examples:
         help="Force rebuild of RAG vector database"
     )
 
+    parser.add_argument(
+        "--session",
+        type=str,
+        default=None,
+        help="Session ID for reusing E2B sandbox (creates new if not provided)"
+    )
+
+    parser.add_argument(
+        "--new-session",
+        action="store_true",
+        help="Force create a new session even if --session is provided"
+    )
+
+    parser.add_argument(
+        "--list-sessions",
+        action="store_true",
+        help="List all active sessions and exit"
+    )
+
+    parser.add_argument(
+        "--close-session",
+        type=str,
+        default=None,
+        help="Close a specific session and exit"
+    )
+
     args = parser.parse_args()
 
     # Set up logging
@@ -74,10 +101,56 @@ Examples:
         verbose=args.verbose
     )
 
+    # Get session manager
+    session_manager = get_session_manager()
+
+    # Handle session management commands
+    if args.list_sessions:
+        sessions = session_manager.list_sessions()
+        print("=" * 50)
+        print("ACTIVE SESSIONS")
+        print("=" * 50)
+        if not sessions:
+            print("No active sessions")
+        else:
+            for session in sessions:
+                print(f"\nSession: {session['session_id']}")
+                print(f"  Created: {session['created_at']}")
+                print(f"  Queries: {session['query_count']}")
+                print(f"  Age: {session['age_seconds']:.1f}s")
+                print(f"  Sandbox: {'active' if session['sandbox_active'] else 'not created yet'}")
+        print("=" * 50)
+        return 0
+
+    if args.close_session:
+        print(f"Closing session: {args.close_session}")
+        session_manager.close_session(args.close_session)
+        print("✓ Session closed")
+        return 0
+
+    # Validate required args for analysis (unless using session management commands)
+    if not args.list_sessions and not args.close_session:
+        if not args.request or not args.images:
+            parser.error("--request and --images are required for analysis")
+
+    # Handle session creation/selection
+    if args.new_session or args.session is None:
+        session_id = session_manager.create_session(args.session)
+        print(f"Created new session: {session_id}\n")
+    else:
+        session_id = args.session
+        if session_manager.get_session(session_id) is None:
+            session_id = session_manager.create_session(session_id)
+            print(f"Created new session: {session_id}\n")
+        else:
+            session = session_manager.get_session(session_id)
+            print(f"Using existing session: {session_id} (queries: {session.query_count})\n")
+
     # Print header
     print("=" * 50)
     print("CALCIUM IMAGING ANALYSIS")
     print("=" * 50)
+    print(f"Session: {session_id}")
     print(f"Request: {args.request}")
     print(f"Images: {args.images}")
     print()
@@ -85,11 +158,11 @@ Examples:
     try:
         # Rebuild RAG if requested
         if args.rebuild_rag:
-            print("Rebuilding RAG vector database...")
-            from layers.rag_system import RAGSystem
-            rag = RAGSystem()
+            print("Rebuilding RAG vector database with enhanced section-based chunking...")
+            from tools.rag_system_enhanced import EnhancedRAGSystem
+            rag = EnhancedRAGSystem()
             rag.rebuild()
-            print("✓ RAG database rebuilt\n")
+            print("✓ RAG database rebuilt with section-based chunking\n")
 
         # Run workflow
         print("[Step 1/5] Preprocessing...", end=" ", flush=True)
@@ -101,7 +174,8 @@ Examples:
         # Actually run the workflow (progress is logged, not printed)
         result = run_workflow(
             user_request=args.request,
-            images_path=args.images
+            images_path=args.images,
+            session_id=session_id
         )
 
         print()  # New line after progress

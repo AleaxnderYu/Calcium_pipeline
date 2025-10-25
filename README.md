@@ -1,202 +1,443 @@
 # Calcium Imaging Agentic System
 
-An AI-powered system that processes calcium imaging data through RAG-enhanced code generation using LangGraph orchestration.
+An AI-powered system for calcium imaging analysis with tool-based orchestration, user approval, and error feedback via Open WebUI.
 
 ## Features
 
-- **Natural Language Interface**: Request analyses in plain English
-- **RAG-Enhanced Code Generation**: Retrieves relevant methods from scientific literature
-- **Automated Workflow**: LangGraph orchestrates preprocessing, retrieval, code generation, and execution
-- **Safe Execution**: Sandboxed Python execution with timeout protection
+- **Tool-Based Workflow**: Explicit tool calls (RAG, code generation, execution, verification)
+- **User Approval**: Review execution plans before running
+- **Error Feedback**: Interactive error handling with retry/skip/abort options
+- **RAG-Enhanced**: Retrieves methods from 91 scientific papers
+- **Docker Execution**: Secure, isolated code execution
+- **Capability Reuse**: Saves successful patterns for future use
+- **Open WebUI Integration**: Chat-based interface
 
 ## Architecture
 
 ```
-User Request → L3 Preprocessor → L2 RAG System → L4 Code Generator → Executor → Results
-               (Load Images)     (Find Methods)   (Generate Code)    (Run Code)
+User Query (Open WebUI)
+    ↓
+Planner (Create tool-based plan)
+    ↓
+User Approval (Review & approve)
+    ↓
+Orchestrator (Execute tools)
+    ├─ RAG Tool
+    ├─ Code Generation Tool
+    ├─ Execute Tool
+    ├─ Verify Tool
+    └─ Capability Tools
+    ↓
+Error? → Present to User → Retry/Skip/Abort
+    ↓
+Results (Return to Open WebUI)
 ```
 
-## Setup
+**Core Components:**
+- **Tool Planner**: Decomposes requests into executable tool calls
+- **Orchestrator**: Executes tools with dependency management
+- **RAG System**: Retrieves from 91 calcium imaging papers
+- **Docker Executor**: Runs generated code in isolated containers
+- **Verifier**: Validates execution results for correctness
+- **Capability Store**: Git + ChromaDB for code reuse
 
-### Option A: Using Conda (Recommended)
+## Quick Start
 
-#### 1. Create Conda Environment
+### 1. Install Dependencies
 
 ```bash
-conda env create -f environment.yml
+# Using conda (recommended)
+conda create -n calcium_pipeline python=3.11
 conda activate calcium_pipeline
-```
-
-#### 2. Verify Installation
-
-```bash
-python test_components.py
-```
-
-### Option B: Using pip/venv
-
-#### 1. Create Virtual Environment
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-#### 2. Install Dependencies
-
-```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure API Key
+### 2. Install Docker
 
-Create a `.env` file:
+Docker is required for code execution.
+
+**Linux (WSL):**
+```bash
+sudo apt-get update
+sudo apt-get install docker.io
+sudo service docker start
+sudo usermod -aG docker $USER
+```
+
+**macOS/Windows**: Download Docker Desktop from https://www.docker.com/products/docker-desktop
+
+Verify Docker is running:
+```bash
+docker --version
+docker ps
+```
+
+### 3. Build Docker Image
+
+```bash
+cd docker
+./build_image.sh
+
+# Or manually:
+docker build -f Dockerfile.calcium_imaging -t calcium_imaging:latest .
+```
+
+### 4. Configure Environment
 
 ```bash
 cp .env.example .env
+# Edit .env and add your OpenAI API key
+nano .env
 ```
 
-Edit `.env` and add your OpenAI API key:
-
+Required variables:
+```bash
+OPENAI_API_KEY=sk-your-key-here
+IMAGES_DIR=data/images
+PAPERS_DIR=data/papers
+VECTOR_DB_PATH=data/vector_db
 ```
-OPENAI_API_KEY=your_key_here
-```
 
-### 4. Generate Mock Data (Optional)
-
-Mock calcium imaging data is already generated. To regenerate:
+### 5. Add Scientific Papers
 
 ```bash
-python utils/generate_mock_images.py
+# Add PDF papers to data/papers/
+cp /path/to/papers/*.pdf data/papers/
+
+# Vector database will auto-build on first query
 ```
+
+See [docs/guides/ADDING_PAPERS_GUIDE.md](docs/guides/ADDING_PAPERS_GUIDE.md) for details.
+
+### 6. Install Docling (Optional, for better PDF parsing)
+
+```bash
+# Basic installation
+pip install docling
+
+# With OCR support for scanned PDFs
+pip install "docling[easyocr]"
+```
+
+See [DOCLING_INTEGRATION.md](DOCLING_INTEGRATION.md) for details.
+
+### 7. Start the API Backend
+
+```bash
+# Start FastAPI server for Open WebUI
+uvicorn api_backend:app --host 0.0.0.0 --port 8000
+```
+
+### 8. Configure Open WebUI
+
+In Open WebUI settings:
+1. Go to Admin Panel → Connections
+2. Add OpenAI API:
+   - Base URL: `http://localhost:8000`
+   - API Key: (any value, not used)
+3. Select the model in chat
+
+See [docs/guides/OPEN_WEBUI_SETUP.md](docs/guides/OPEN_WEBUI_SETUP.md) for detailed setup.
 
 ## Usage
 
-### Basic Usage
+### Via Open WebUI
 
-```bash
-python main.py --request "Count the number of cells" --images ./data/images
+1. Start Open WebUI and select the calcium imaging model
+2. Ask questions:
+   ```
+   "Count cells in the calcium imaging data"
+   "What are calcium transients?"
+   "Detect calcium events in the time series"
+   ```
+
+### Direct Python API
+
+```python
+from graph.workflow import run_workflow
+
+result = run_workflow(
+    user_request="Count cells in the image",
+    images_path="data/images"
+)
+
+print(result.data)
+# {'cell_count': 42}
+
+print(result.summary)
+# "Executed 5 tools for: Count cells..."
 ```
 
-### Advanced Options
+### Example Workflow
 
-```bash
-# Verbose logging
-python main.py --request "Calculate mean intensity over time" --images ./data/images --verbose
+**User Query**: "Count cells in the image"
 
-# Rebuild RAG database
-python main.py --request "Detect calcium transients" --images ./data/images --rebuild-rag
-
-# Custom output directory
-python main.py --request "Segment cells" --images ./data/images --output ./my_results
+**Generated Plan**:
+```
+1. [rag] Retrieve cell segmentation methods from papers
+2. [code_generation] Generate watershed segmentation code
+3. [execute] Run segmentation in Docker
+4. [verify] Verify cell count is reasonable
+5. [capability_save] Save pattern for reuse
 ```
 
-## Example Requests
+**Execution**:
+```
+✓ RAG retrieved 5 relevant paper chunks
+✓ Generated code using watershed algorithm
+✓ Executed in Docker (2.3s)
+✓ Verified: Found 42 cells (reasonable)
+✓ Saved capability: cell_counting_watershed_20250122
+```
 
-- "Count the number of cells in the images"
-- "Calculate mean intensity over time for each cell"
-- "Detect calcium transients and measure their amplitude"
-- "Segment cells and extract their properties"
-- "Find bright spots and count them"
+**Result**:
+```json
+{
+    "cell_count": 42,
+    "segmentation_map": "path/to/segmentation.png",
+    "execution_time": 2.3
+}
+```
 
-## Output
+## Tool Types
 
-Results are saved to `./outputs/YYYY-MM-DD_HH-MM-SS/`:
+### 1. RAG Tool
+Retrieves scientific methods from papers.
+```python
+Input:  {"query": "calcium transient detection"}
+Output: {"chunks": [...], "sources": [...]}
+```
 
-- `report.json`: Complete analysis results
-- `generated_code.py`: Code that was executed
-- `figure_001.png`: Generated visualizations (if any)
-- `logs.txt`: Detailed execution log
+### 2. Code Generation Tool
+Generates Python code using GPT-4.
+```python
+Input:  {"task_description": "...", "rag_context": {...}}
+Output: {"code": "import numpy as np...", "description": "..."}
+```
 
-## Configuration
+### 3. Execute Tool
+Runs code in Docker sandbox.
+```python
+Input:  {"code": "...", "images_path": "..."}
+Output: {"success": True, "results": {...}, "figures": [...]}
+```
 
-Edit `config.py` to customize:
+### 4. Verify Tool
+Validates execution results.
+```python
+Input:  {"execution_result": {...}, "expected_output": "..."}
+Output: {"passed": True, "confidence": 0.95, "issues": []}
+```
 
-- `OPENAI_MODEL`: Model for code generation (default: "gpt-4")
-- `CODE_TIMEOUT_SECONDS`: Execution timeout (default: 30)
-- `CHUNK_SIZE`: RAG chunk size (default: 1000)
-- `TOP_K_CHUNKS`: Number of chunks to retrieve (default: 3)
+### 5. Capability Search/Save
+Finds or saves reusable code.
+```python
+Search: {"query": "cell counting"}
+Save:   {"code": "...", "description": "..."}
+```
 
 ## Project Structure
 
 ```
 calcium_pipeline/
-├── main.py                 # Entry point
-├── config.py              # Configuration
-├── graph/                 # LangGraph workflow
-│   ├── workflow.py       # Workflow definition
-│   ├── state.py          # State schema
-│   └── nodes.py          # Node functions
-├── layers/               # Core components
-│   ├── l2_rag_system.py  # RAG retrieval
-│   ├── l3_preprocessor.py # Image loading
-│   └── l4_capability_manager.py # Code generation
-├── core/                 # Utilities
-│   ├── data_models.py    # Data structures
-│   └── executor.py       # Code execution
-├── data/                 # Data files
-│   ├── papers/          # Scientific papers (txt)
-│   ├── images/          # Sample images (png)
-│   └── vector_db/       # ChromaDB storage
-└── outputs/             # Generated results
+├── core/                       # Core logic
+│   ├── tool_planner.py        # Tool-based planner
+│   ├── orchestrator.py        # Tool executor
+│   ├── verifier.py            # Result validator
+│   ├── docker_executor.py     # Docker sandbox
+│   └── data_models.py         # Data structures
+├── graph/                      # Workflow
+│   ├── workflow.py            # Main workflow
+│   └── state.py               # PipelineState
+├── layers/                     # Supporting layers
+│   ├── rag_system.py          # RAG (91 papers)
+│   ├── capability_manager.py  # Capability storage
+│   └── preprocessor.py        # Image preprocessing
+├── docker/                     # Docker configuration
+│   ├── Dockerfile.calcium_imaging
+│   └── build_image.sh
+├── data/
+│   ├── papers/                # Scientific PDFs
+│   ├── images/                # Calcium imaging data
+│   ├── vector_db/             # ChromaDB (auto-generated)
+│   └── capability_store/      # Git repo (auto-generated)
+├── api_backend.py             # FastAPI for Open WebUI
+├── main.py                    # Entry point
+├── config.py                  # Configuration
+└── requirements.txt           # Python dependencies
 ```
+
+## Configuration
+
+Edit [config.py](config.py) to customize:
+
+```python
+# Models
+OPENAI_MODEL = "gpt-4"              # For code generation
+ROUTER_MODEL = "gpt-3.5-turbo"      # For planning/verification
+EMBEDDING_MODEL = "text-embedding-3-small"
+
+# RAG Settings
+CHUNK_SIZE = 500
+CHUNK_OVERLAP = 100
+TOP_K_CHUNKS = 5
+
+# Execution
+CODE_TIMEOUT_SECONDS = 300
+MAX_RETRIES = 3
+```
+
+## Data
+
+### Images
+Place calcium imaging data in `data/images/`:
+- Supported: PNG, TIFF, NPY
+- Can be single images or time series
+- System auto-detects format
+
+### Papers
+Add scientific PDFs to `data/papers/`:
+- 91 papers currently included
+- Vector database auto-builds on first query
+- Supports text PDFs and scanned PDFs (with Docling OCR)
+
+To rebuild vector database:
+```bash
+rm -rf data/vector_db/
+# Will rebuild on next query
+```
+
+## Models Used
+
+| Component | Model | Purpose |
+|-----------|-------|---------|
+| Tool Planner | GPT-3.5-turbo | Fast, cheap planning |
+| Code Generation | GPT-4 | High-quality code |
+| Verifier | GPT-3.5-turbo | Quick validation |
+| RAG Embeddings | text-embedding-3-small | Vector search |
+
+## Documentation
+
+### Guides
+- **[docs/guides/OPEN_WEBUI_SETUP.md](docs/guides/OPEN_WEBUI_SETUP.md)** - Open WebUI integration
+- **[docs/guides/ADDING_PAPERS_GUIDE.md](docs/guides/ADDING_PAPERS_GUIDE.md)** - How to add papers
+- **[docs/guides/GIT_SETUP.md](docs/guides/GIT_SETUP.md)** - Git configuration
+- **[docs/guides/MODEL_SETTINGS_GUIDE.md](docs/guides/MODEL_SETTINGS_GUIDE.md)** - Model configuration
+
+### System Documentation
+- **[SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)** - System design and components
+- **[WORKFLOW_ARCHITECTURE.md](WORKFLOW_ARCHITECTURE.md)** - Workflow execution details
+- **[CITATION_SYSTEM.md](CITATION_SYSTEM.md)** - Citation and RAG system
+- **[HTTP_CITATIONS.md](HTTP_CITATIONS.md)** - Clickable PDF citations
+- **[DOCLING_INTEGRATION.md](DOCLING_INTEGRATION.md)** - PDF parsing with Docling
+- **[ENHANCED_RAG.md](ENHANCED_RAG.md)** - Enhanced RAG with section-based retrieval
+
+### Archive
+Historical documentation moved to `docs/archive/`
 
 ## Troubleshooting
 
-### Missing API Key Error
+### Docker Issues
 
-```
-ValueError: OPENAI_API_KEY environment variable is required
-```
-
-**Solution**: Create `.env` file with your OpenAI API key.
-
-### ChromaDB Issues
-
-If RAG retrieval fails, rebuild the database:
-
+**Permission denied:**
 ```bash
-rm -rf ./data/vector_db
-python main.py --request "test" --images ./data/images --rebuild-rag
+sudo usermod -aG docker $USER
+newgrp docker
 ```
 
-### Timeout Errors
-
-If code execution times out, increase the timeout in `config.py`:
-
-```python
-CODE_TIMEOUT_SECONDS = 60
+**Docker not running:**
+```bash
+sudo service docker start  # Linux
+# Or start Docker Desktop  # macOS/Windows
 ```
 
 ### Import Errors
 
-Ensure all dependencies are installed:
-
+**Missing modules:**
 ```bash
-pip install -r requirements.txt --upgrade
+pip install -r requirements.txt
 ```
 
-## Limitations (POC Scope)
+**Docling not available:**
+```bash
+pip install docling
+# Or with OCR: pip install "docling[easyocr]"
+```
 
-- **Security**: Uses `exec()` with namespace restrictions (POC-level only)
-- **Code Quality**: Generated code may not always be optimal
-- **Error Recovery**: No iterative refinement of failed code
-- **Workflow**: Linear only (no conditional branching yet)
+### RAG Issues
 
-## Future Enhancements
+**No papers found:**
+```bash
+ls data/papers/  # Should see PDFs
+```
 
-1. Docker/E2B sandboxing for production-grade security
-2. Real scientific papers (PDF loading)
-3. Code refinement with retry logic
-4. Multi-turn conversation support
-5. Human-in-the-loop validation
-6. Web interface
-7. Capability caching
+**Rebuild vector database:**
+```bash
+rm -rf data/vector_db/
+# Rebuilds on next query
+```
+
+### Code Execution Errors
+
+**Check Docker is running:**
+```bash
+docker ps
+```
+
+**Check Docker image exists:**
+```bash
+docker images | grep calcium_imaging
+```
+
+**Rebuild Docker image:**
+```bash
+cd docker && ./build_image.sh
+```
+
+## Development
+
+### Run Tests
+
+```bash
+python -m pytest tests/
+```
+
+### Debug Mode
+
+```bash
+# Enable debug logging
+export LOG_LEVEL=DEBUG
+python main.py
+```
+
+### Add New Tools
+
+1. Define tool type in `core/data_models.py`:
+   ```python
+   class ToolType(Enum):
+       MY_TOOL = "my_tool"
+   ```
+
+2. Add tool execution in `core/orchestrator.py`:
+   ```python
+   def _execute_my_tool(self, inputs):
+       # Tool implementation
+       return {"output": ...}
+   ```
+
+3. Update planner prompt in `core/tool_planner.py` to include new tool
+
+## Contributing
+
+This is a research project for calcium imaging analysis. For questions or contributions, please open an issue.
 
 ## License
 
-MIT
+MIT License - See LICENSE file for details
 
-## Support
+## Acknowledgments
 
-For issues and questions, see the project documentation or contact the development team.
+- Uses Docling (IBM Research) for advanced PDF parsing
+- Built with LangGraph for workflow orchestration
+- Powered by OpenAI GPT-4 for code generation
+- Scientific papers from calcium imaging research community

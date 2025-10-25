@@ -7,7 +7,7 @@ import argparse
 import json
 from pathlib import Path
 from datetime import datetime
-from layers.capability_store import CapabilityStore
+from tools.capability_store import CapabilityStore
 
 
 def view_all_capabilities(store: CapabilityStore, sort_by: str = "created_at"):

@@ -7,6 +7,11 @@ langchain-community>=0.0.10
 # Vector database
 chromadb>=0.4.0
 
+# PDF processing
+docling>=2.0.0  # Advanced PDF parsing with tables, images, layout
+# For OCR support (scanned PDFs): pip install "docling[easyocr]"
+pypdf>=3.17.0   # Legacy fallback
+
 # LLM API
 openai>=1.0.0
 
@@ -23,3 +28,13 @@ pydantic>=2.0.0
 
 # Version control for capabilities
 gitpython>=3.1.0
+
+# Docker execution
+docker>=6.0.0
+
+# Legacy code execution (deprecated)
+# e2b-code-interpreter>=0.0.8  # No longer used
+
+# FastAPI Backend (for Open WebUI integration)
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0

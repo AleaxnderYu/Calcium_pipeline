@@ -44,6 +44,9 @@ venv.bak/
 # Outputs
 outputs/*/
 
+# Presentation materials (not version controlled)
+presentation/
+
 # Data - ChromaDB vector databases
 data/vector_db/
 
@@ -53,10 +56,19 @@ data/capability_store/
 # Logs
 *.log
 pipeline.log
+api_backend.log
 
 # OS
 .DS_Store
 Thumbs.db
+*.Zone.Identifier
+
+# Open WebUI
+.webui_secret_key
+
+# Temporary data
+data/chat_history/
+outputs/temp/
 
 # Jupyter Notebook
 .ipynb_checkpoints

@@ -1,0 +1,43 @@
+# Base Docker image for calcium imaging analysis
+# Provides isolated, reproducible execution environment
+
+FROM python:3.11-slim
+
+LABEL maintainer="Calcium Imaging Pipeline"
+LABEL description="Base image for calcium imaging analysis with common scientific packages"
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    make \
+    libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create workspace
+WORKDIR /workspace
+
+# Copy requirements for base image
+COPY requirements.docker.txt /tmp/requirements.docker.txt
+
+# Install Python packages
+RUN pip install --no-cache-dir -r /tmp/requirements.docker.txt && \
+    rm /tmp/requirements.docker.txt
+
+# Create non-root user for security
+RUN useradd -m -u 1000 calcium && \
+    chown -R calcium:calcium /workspace
+
+# Create data and output directories
+RUN mkdir -p /data/images /workspace/outputs && \
+    chown -R calcium:calcium /data /workspace
+
+# Switch to non-root user
+USER calcium
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+ENV MPLBACKEND=Agg
+
+# Default command (will be overridden)
+CMD ["python", "--version"]

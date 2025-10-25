@@ -19,8 +19,14 @@ if not OPENAI_API_KEY:
         "See .env.example for reference."
     )
 
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5")
+ROUTER_MODEL = os.getenv("ROUTER_MODEL", "gpt-5")
 EMBEDDING_MODEL = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+
+# API Server URL for serving PDFs (used for clickable citations)
+# Default: http://localhost:8000 (FastAPI default)
+# Set this to your public URL if accessing from remote clients
+API_SERVER_URL = os.getenv("API_SERVER_URL", "http://localhost:8000")
 
 # ===== Paths =====
 PROJECT_ROOT = Path(__file__).parent
@@ -38,14 +44,32 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 CAPABILITY_STORE_PATH.mkdir(parents=True, exist_ok=True)
 
 # ===== Execution Settings =====
-CODE_TIMEOUT_SECONDS = 30
+CODE_TIMEOUT_SECONDS = 300  # 5 minutes timeout for code execution
 MAX_MEMORY_MB = 512  # Future use
 ALLOWED_IMPORTS = ["numpy", "scipy", "matplotlib", "skimage"]
+
+# Docker Execution Settings
+DOCKER_BASE_IMAGE = os.getenv("DOCKER_BASE_IMAGE", "calcium_imaging:latest")
+DOCKER_MEMORY_LIMIT = os.getenv("DOCKER_MEMORY_LIMIT", "2g")
+DOCKER_CPU_QUOTA = int(os.getenv("DOCKER_CPU_QUOTA", "100000"))  # 100000 = 1 CPU
+DOCKER_NETWORK_DISABLED = os.getenv("DOCKER_NETWORK_DISABLED", "true").lower() == "true"
+
+# ===== Legacy Sandbox Settings (DEPRECATED - Not used with Docker) =====
+# Docker containers are created and destroyed per execution
+# No manual lifecycle management needed
+CLOSE_SANDBOX_AFTER_EXECUTION = os.getenv("CLOSE_SANDBOX_AFTER_EXECUTION", "true").lower() == "true"
+SANDBOX_REUSE_ENABLED = os.getenv("SANDBOX_REUSE_ENABLED", "false").lower() == "true"
+SANDBOX_MAX_IDLE_MINUTES = int(os.getenv("SANDBOX_MAX_IDLE_MINUTES", "5"))
 
 # ===== RAG Settings =====
 CHUNK_SIZE = 1000
 CHUNK_OVERLAP = 200
 TOP_K_CHUNKS = 3
+
+# Docling OCR Settings
+# Options: "easyocr" (default), "tesseract", "tesseract_cli"
+DOCLING_OCR_ENGINE = os.getenv("DOCLING_OCR_ENGINE", "easyocr")
+DOCLING_ENABLE_OCR = os.getenv("DOCLING_ENABLE_OCR", "true").lower() == "true"
 
 # ===== Capability Store Settings =====
 CAPABILITY_SIMILARITY_THRESHOLD = float(os.getenv("CAPABILITY_SIMILARITY_THRESHOLD", "0.85"))
